@@ -261,23 +261,23 @@ function App() {
     }
   };
 
-  if (booting) return <main className="login-shell"><div className="login-card"><p className="eyebrow">EMAN JEWELERS</p><h1>Checking secure session…</h1><p className="muted">Please wait.</p></div></main>;
+  if (booting) return <main className="login-shell"><div className="login-card"><p className="eyebrow">WOODIQUE</p><h1>Checking secure session…</h1><p className="muted">Please wait.</p></div></main>;
 
-  if (!admin) return <main className="login-shell"><form className="login-card" onSubmit={login}><img src="https://raw.githubusercontent.com/khizarusestate/Eman-Jewelers/main/public/images/Logo.png" alt="Eman Jewelers logo" className="login-logo"/><p className="eyebrow">EMAN JEWELERS • PRIVATE ACCESS</p><h1>Admin sign in</h1><p className="muted">Sign in to manage the store.</p>{error && <div className="alert">{error}</div>}<label>Email address<input type="email" required autoComplete="username" value={email} onChange={e => setEmail(e.target.value)}/></label><label>Password<input type="password" required autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)}/></label><button className="gold-btn" type="submit" disabled={busy}>{busy ? "Signing in…" : "Login"}</button></form></main>;
+  if (!admin) return <main className="login-shell"><form className="login-card" onSubmit={login}><img src="/images/Logo.png" alt="Woodique logo" className="login-logo"/><p className="eyebrow">WOODIQUE • PRIVATE ACCESS</p><h1>Admin sign in</h1><p className="muted">Sign in to manage the store.</p>{error && <div className="alert">{error}</div>}<label>Email address<input type="email" required autoComplete="username" value={email} onChange={e => setEmail(e.target.value)}/></label><label>Password<input type="password" required autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)}/></label><button className="gold-btn" type="submit" disabled={busy}>{busy ? "Signing in…" : "Login"}</button></form></main>;
 
   const current = NAV.find(n => n.id === active) || NAV[0];
   const PageIcon = current.icon;
 
   return <main className="app-shell">
     <aside className={"sidebar " + (mobileMenu ? "sidebar-open" : "")}>
-      <div className="brand"><img src="https://raw.githubusercontent.com/khizarusestate/Eman-Jewelers/main/public/images/Logo.png" alt="Eman Jewelers logo" className="nav-logo"/><span>EMAN <b>ADMIN</b></span><button className="mobile-close" onClick={() => setMobileMenu(false)} aria-label="Close menu"><X size={19}/></button></div>
+      <div className="brand"><img src="/images/Logo.png" alt="Woodique logo" className="nav-logo"/><span>WOODIQUE <b>ADMIN</b></span><button className="mobile-close" onClick={() => setMobileMenu(false)} aria-label="Close menu"><X size={19}/></button></div>
       <div className="menu-caption">WORKSPACE</div>
       {["OVERVIEW", "MANAGEMENT", "SYSTEM"].map(group => <div className="nav-group" key={group}><p className="nav-group-title">{group}</p>{NAV.filter(n => n.group === group).map(n => { const Icon = n.icon; return <button key={n.id} className={"nav-item " + (active === n.id ? "nav-item-active" : "")} onClick={() => changePage(n.id)}><Icon size={17}/><span>{n.label}</span>{n.id === "products" && <small>{products.filter(p => p.active !== false).length}</small>}</button>; })}</div>)}
       <div className="sidebar-bottom"><div className="admin-profile"><div className="avatar">A</div><div className="admin-meta"><b>{admin.name || "Administrator"}</b><small>{admin.email}</small></div><button className="signout-menu" title="Sign out" onClick={signout}><LogOut size={17}/></button></div></div>
     </aside>
     {mobileMenu && <button className="mobile-scrim" aria-label="Close navigation" onClick={() => setMobileMenu(false)}/>}
     <section className="workspace">
-      <header className="topbar"><div className="heading-wrap"><button className="menu-toggle" onClick={() => setMobileMenu(true)} aria-label="Open menu"><Menu size={21}/></button><div><p className="eyebrow">EMAN JEWELERS / {current.label.toUpperCase()}</p><h1>{active === "dashboard" ? "Dashboard overview" : current.label}</h1></div></div><div className="topbar-actions"><span className="status-pill"><i/> Live store admin</span><button className="ghost-btn compact-btn" onClick={loadData} title="Refresh data"><RefreshCw size={15}/> Refresh</button>{active === "products" && <button className="gold-btn compact-btn" onClick={openNewProduct}><Plus size={16}/> Add product</button>}</div></header>
+      <header className="topbar"><div className="heading-wrap"><button className="menu-toggle" onClick={() => setMobileMenu(true)} aria-label="Open menu"><Menu size={21}/></button><div><p className="eyebrow">WOODIQUE / {current.label.toUpperCase()}</p><h1>{active === "dashboard" ? "Dashboard overview" : current.label}</h1></div></div><div className="topbar-actions"><span className="status-pill"><i/> Live store admin</span><button className="ghost-btn compact-btn" onClick={loadData} title="Refresh data"><RefreshCw size={15}/> Refresh</button>{active === "products" && <button className="gold-btn compact-btn" onClick={openNewProduct}><Plus size={16}/> Add product</button>}</div></header>
       {notice && <div className="success">{notice}<button onClick={() => setNotice("")}><X size={15}/></button></div>}
       {loadError && <div className="alert">{loadError}<button onClick={loadData}><RefreshCw size={15}/> Retry</button></div>}
       {active === "dashboard" && <>
