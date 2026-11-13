@@ -60,6 +60,7 @@ function App() {
   const [unreadCustomers, setUnreadCustomers] = useState(0);
   const [search, setSearch] = useState("");
   const [globalSearch, setGlobalSearch] = useState("");
+  const [globalResults, setGlobalResults] = useState({ customers: [], products: [], orders: [], categories: [] });
   const [categorySearch, setCategorySearch] = useState("");
   const [settingsSearch, setSettingsSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -171,17 +172,20 @@ function App() {
   }, [visibleProducts, search]);
   const categories = useMemo(() => [...new Set(products.filter(p => p.active !== false).map(p => p.category).filter(Boolean))].sort((a, b) => a.localeCompare(b)), [products]);
   const filteredCategories = useMemo(() => { const term = categorySearch.trim().toLowerCase(); return categories.filter(category => !term || category.toLowerCase().includes(term)); }, [categories, categorySearch]);
-  const globalResults = useMemo(() => {
-    const term = globalSearch.trim().toLowerCase();
-    if (!term) return { customers: [], products: [], orders: [], categories: [] };
-    const matches = values => values.filter(value => String(value || "").toLowerCase().includes(term));
-    return {
-      customers: customers.filter(c => matches([c.name, c.email, c.phone, c.city]).some(Boolean)).slice(0, 5),
-      products: products.filter(p => matches([p.name, p.category, p.description, p.tag]).some(Boolean)).slice(0, 5),
-      orders: orders.filter(o => matches([o.orderNumber, o.id, o.customer, o.email, o.phone, o.status]).some(Boolean)).slice(0, 5),
-      categories: categories.filter(category => category.toLowerCase().includes(term)).slice(0, 5)
-    };
-  }, [globalSearch, customers, products, orders, categories]);
+  useEffect(() => {
+    const term = globalSearch.trim();
+    if (term.length < 2) {
+      setGlobalResults({ customers: [], products: [], orders: [], categories: [] });
+      return;
+    }
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      api("/search?q=" + encodeURIComponent(term))
+        .then(data => { if (!cancelled) setGlobalResults(data.results || { customers: [], products: [], orders: [], categories: [] }); })
+        .catch(() => { if (!cancelled) setGlobalResults({ customers: [], products: [], orders: [], categories: [] }); });
+    }, 250);
+    return () => { cancelled = true; window.clearTimeout(timer); };
+  }, [globalSearch]);
   const pages = Math.max(1, Math.ceil(filteredCustomers.length / PAGE_SIZE));
   const visibleCustomers = filteredCustomers.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   useEffect(() => { setPage(1); }, [search, active]);
