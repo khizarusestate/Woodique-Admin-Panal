@@ -56,6 +56,8 @@ function App() {
   const [customers, setCustomers] = useState([]);
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [unreadOrders, setUnreadOrders] = useState(0);
+  const [unreadCustomers, setUnreadCustomers] = useState(0);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [notice, setNotice] = useState("");
@@ -77,9 +79,31 @@ function App() {
         api("/products"),
         api("/orders?limit=100")
       ]);
-      setCustomers(customerData.customers || []);
+      const nextCustomers = customerData.customers || [];
+      const nextOrders = (orderData.orders || []).map(normalizeOrder);
+      setCustomers(nextCustomers);
       setProducts(productData.products || []);
-      setOrders((orderData.orders || []).map(normalizeOrder));
+      setOrders(nextOrders);
+
+      const updateUnread = (key, records) => {
+        const storageKey = `woodique-admin-last-viewed-${key}`;
+        const stored = localStorage.getItem(storageKey);
+        const latest = records.reduce((max, item) => {
+          const stamp = new Date(item.createdAt || item.date || 0).getTime();
+          return Number.isFinite(stamp) ? Math.max(max, stamp) : max;
+        }, 0);
+        if (stored === null) {
+          localStorage.setItem(storageKey, String(Date.now()));
+          return 0;
+        }
+        const lastViewed = Number(stored) || 0;
+        return records.filter(item => {
+          const stamp = new Date(item.createdAt || item.date || 0).getTime();
+          return Number.isFinite(stamp) && stamp > lastViewed;
+        }).length;
+      };
+      setUnreadOrders(updateUnread("orders", nextOrders));
+      setUnreadCustomers(updateUnread("customers", nextCustomers));
     } catch (err) {
       setLoadError(err.message);
       if (/session|sign in|unauthorized/i.test(err.message)) setAdmin(null);
@@ -96,7 +120,10 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (admin) loadData();
+    if (!admin) return;
+    loadData();
+    const poll = window.setInterval(loadData, 30000);
+    return () => window.clearInterval(poll);
   }, [admin, loadData]);
 
   const login = async event => {
@@ -144,7 +171,19 @@ function App() {
   const visibleCustomers = filteredCustomers.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   useEffect(() => { setPage(1); }, [search, active]);
 
-  const changePage = id => { setActive(id); setSearch(""); setMobileMenu(false); };
+  const changePage = id => {
+    if (id === "orders") {
+      localStorage.setItem("woodique-admin-last-viewed-orders", String(Date.now()));
+      setUnreadOrders(0);
+    }
+    if (id === "customers") {
+      localStorage.setItem("woodique-admin-last-viewed-customers", String(Date.now()));
+      setUnreadCustomers(0);
+    }
+    setActive(id);
+    setSearch("");
+    setMobileMenu(false);
+  };
 
   const saveCustomer = async event => {
     event.preventDefault();
@@ -270,7 +309,7 @@ function App() {
     <aside className={"sidebar " + (mobileMenu ? "sidebar-open" : "")}>
       <div className="brand"><img src="/images/Logo.png" alt="Woodique logo" className="nav-logo"/><button className="mobile-close" onClick={() => setMobileMenu(false)} aria-label="Close menu"><X size={19}/></button></div>
       <div className="menu-caption">WORKSPACE</div>
-      {["OVERVIEW", "MANAGEMENT", "SYSTEM"].map(group => <div className="nav-group" key={group}><p className="nav-group-title">{group}</p>{NAV.filter(n => n.group === group).map(n => { const Icon = n.icon; return <button key={n.id} className={"nav-item " + (active === n.id ? "nav-item-active" : "")} onClick={() => changePage(n.id)}><Icon size={17}/><span>{n.label}</span>{n.id === "products" && <small>{products.filter(p => p.active !== false).length}</small>}</button>; })}</div>)}
+      {["OVERVIEW", "MANAGEMENT", "SYSTEM"].map(group => <div className="nav-group" key={group}><p className="nav-group-title">{group}</p>{NAV.filter(n => n.group === group).map(n => { const Icon = n.icon; return <button key={n.id} className={"nav-item " + (active === n.id ? "nav-item-active" : "")} onClick={() => changePage(n.id)}><Icon size={17}/><span>{n.label}</span>{n.id === "products" && <small>{products.filter(p => p.active !== false).length}</small>}{n.id === "orders" && unreadOrders > 0 && <small className="nav-badge" aria-label={`${unreadOrders} new orders`}>{unreadOrders > 9 ? "9+" : unreadOrders}</small>}{n.id === "customers" && unreadCustomers > 0 && <small className="nav-badge" aria-label={`${unreadCustomers} new customers`}>{unreadCustomers > 9 ? "9+" : unreadCustomers}</small>}</button>; })}</div>)}
       <div className="sidebar-bottom"><div className="admin-profile"><div className="avatar">A</div><div className="admin-meta"><b>{admin.name || "Administrator"}</b><small>{admin.email}</small></div><button className="signout-menu" title="Sign out" onClick={signout}><LogOut size={17}/></button></div></div>
     </aside>
     {mobileMenu && <button className="mobile-scrim" aria-label="Close navigation" onClick={() => setMobileMenu(false)}/>}
