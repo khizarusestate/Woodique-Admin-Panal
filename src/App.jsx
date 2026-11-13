@@ -172,12 +172,19 @@ function App() {
   useEffect(() => { setPage(1); }, [search, active]);
 
   const changePage = id => {
+    const markLatestViewed = (key, records) => {
+      const latest = records.reduce((max, item) => {
+        const stamp = new Date(item.createdAt || item.date || 0).getTime();
+        return Number.isFinite(stamp) ? Math.max(max, stamp) : max;
+      }, Number(localStorage.getItem(`woodique-admin-last-viewed-${key}`)) || 0);
+      localStorage.setItem(`woodique-admin-last-viewed-${key}`, String(latest));
+    };
     if (id === "orders") {
-      localStorage.setItem("woodique-admin-last-viewed-orders", String(Date.now()));
+      markLatestViewed("orders", orders);
       setUnreadOrders(0);
     }
     if (id === "customers") {
-      localStorage.setItem("woodique-admin-last-viewed-customers", String(Date.now()));
+      markLatestViewed("customers", customers);
       setUnreadCustomers(0);
     }
     setActive(id);
