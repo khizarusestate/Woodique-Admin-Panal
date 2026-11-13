@@ -35,3 +35,7 @@
 .settings-card textarea{display:block;width:100%;margin-top:8px;resize:vertical}
 .category-row .icon-btn{flex:0 0 auto}
 @media(max-width:540px){.order-detail-grid{grid-template-columns:1fr}.order-filters{padding-inline:14px}.order-modal{padding:24px 18px}.status-select{max-width:118px}}
+
+/* Unread activity badges for new orders and customers */
+.nav-item .nav-badge{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;border:1px solid #C58B5288;border-radius:999px;background:#A96F3F;color:#fffaf1;font-size:10px;font-weight:700;line-height:1;box-shadow:0 2px 8px #A96F3F35}
+.nav-item-active .nav-badge{background:#7F4B26;border-color:#7F4B26;color:#fffaf1}
