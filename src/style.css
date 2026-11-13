@@ -39,3 +39,7 @@
 /* Unread activity badges for new orders and customers */
 .nav-item .nav-badge{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;border:1px solid #C58B5288;border-radius:999px;background:#A96F3F;color:#fffaf1;font-size:10px;font-weight:700;line-height:1;box-shadow:0 2px 8px #A96F3F35}
 .nav-item-active .nav-badge{background:#7F4B26;border-color:#7F4B26;color:#fffaf1}
+
+
+/* Order product image snapshots */
+.order-product-cell{display:flex;align-items:center;gap:10px;min-width:150px}.order-product-cell>span{display:flex;flex-direction:column;gap:4px}.order-product-thumb{display:block;flex:0 0 48px;width:48px;height:54px;object-fit:cover;border:1px solid #A96F3F50;border-radius:6px;background:#eae3d5}.order-product-thumb-empty{display:grid;place-items:center;color:#A96F3F}.order-item-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #A96F3F20}.order-item-image{display:block;flex:0 0 64px;width:64px;height:72px;object-fit:cover;border:1px solid #A96F3F40;border-radius:7px;background:#eae3d5}.order-item-name{flex:1;min-width:0;color:#6E5946;font-size:12px;line-height:1.5}.order-item-row b{color:#A96F3F;white-space:nowrap;font-size:12px}
