@@ -6,7 +6,7 @@ export default defineConfig({
   server: {
     proxy: {
       "/api": {
-        target: "https://82-25-105-184.sslip.io",
+        target: "https://woodique.82-25-105-184.sslip.io",
         changeOrigin: true,
         secure: true
       }
