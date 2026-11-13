@@ -166,46 +166,44 @@ function App() {
     } catch (err) { flash(err.message); }
   };
 
-  const handleProductImage = event => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    if (!file.type.startsWith("image/")) { flash("Please select an image file."); event.target.value = ""; return; }
-    if (file.size > 8 * 1024 * 1024) { flash("Choose an image smaller than 8 MB."); event.target.value = ""; return; }
-    const reader = new FileReader();
-    reader.onerror = () => flash("Could not read this image.");
-    reader.onload = () => {
-      const image = new Image();
-      image.onload = () => {
-        const scale = Math.min(1, 1500 / Math.max(image.width, image.height));
-        const canvas = document.createElement("canvas");
-        canvas.width = Math.max(1, Math.round(image.width * scale));
-        canvas.height = Math.max(1, Math.round(image.height * scale));
-        const context = canvas.getContext("2d");
-        context.drawImage(image, 0, 0, canvas.width, canvas.height);
-        let quality = 0.82;
-        let result = canvas.toDataURL("image/jpeg", quality);
-        while (result.length > 1750000 && quality > 0.45) {
-          quality -= 0.08;
-          result = canvas.toDataURL("image/jpeg", quality);
-        }
-        if (result.length > 1900000) { flash("Image is too large after compression. Choose a smaller image."); return; }
-        setProductForm(prev => ({ ...prev, image: result }));
+  const handleProductImages = event => {
+    const files = Array.from(event.target.files || []);
+    if (!files.length) return;
+    if (files.length > 8) { flash("Choose up to 8 product images."); event.target.value = ""; return; }
+    const invalid = files.find(file => !file.type.startsWith("image/") || file.size > 8 * 1024 * 1024);
+    if (invalid) { flash("Choose image files smaller than 8 MB each."); event.target.value = ""; return; }
+    Promise.all(files.map(file => new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error("Could not read an image."));
+      reader.onload = () => {
+        const image = new Image();
+        image.onerror = () => reject(new Error("An image could not be processed."));
+        image.onload = () => {
+          const scale = Math.min(1, 1500 / Math.max(image.width, image.height));
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.max(1, Math.round(image.width * scale));
+          canvas.height = Math.max(1, Math.round(image.height * scale));
+          canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
+          let quality = 0.82, result = canvas.toDataURL("image/jpeg", quality);
+          while (result.length > 1600000 && quality > 0.45) { quality -= 0.08; result = canvas.toDataURL("image/jpeg", quality); }
+          if (result.length > 1750000) reject(new Error("An image is too large after compression."));
+          else resolve(result);
+        };
+        image.src = String(reader.result || "");
       };
-      image.onerror = () => flash("This image could not be processed.");
-      image.src = String(reader.result || "");
-    };
-    reader.readAsDataURL(file);
+      reader.readAsDataURL(file);
+    }))).then(images => setProductForm(prev => ({ ...prev, image: images[0], images }))).catch(error => flash(error.message));
   };
 
   const openNewProduct = () => {
     setEditingProduct(false);
-    setProductForm({ name: "", category: categories[0] || "", price: "", image: "", tag: "", description: "", material: "", care: "" });
+    setProductForm({ name: "", category: categories[0] || "", price: "", image: "", images: [], tag: "", description: "", material: "", care: "" });
   };
 
   const saveProduct = async event => {
     event.preventDefault();
     if (!productForm.category.trim()) { flash("Enter a category name first."); return; }
-    const payload = { ...productForm, price: Number(productForm.price), active: true };
+    const payload = { ...productForm, image: productForm.image || productForm.images?.[0] || "", images: productForm.images?.length ? productForm.images : (productForm.image ? [productForm.image] : []), price: Number(productForm.price), active: true };
     try {
       const data = await api(editingProduct ? "/products/" + encodeURIComponent(productForm.id) : "/products", {
         method: editingProduct ? "PATCH" : "POST",
@@ -300,7 +298,7 @@ function App() {
     </section>
     {editCustomer && <div className="modal-backdrop" onMouseDown={e => { if (e.target === e.currentTarget) setEditCustomer(null); }}><form className="edit-modal" onSubmit={saveCustomer}><button type="button" className="close" onClick={() => setEditCustomer(null)}><X/></button><p className="eyebrow">CUSTOMER PROFILE</p><h2>Edit customer</h2><label>Name<input required minLength="2" maxLength="70" value={editCustomer.name || ""} onChange={e => setEditCustomer({ ...editCustomer, name: e.target.value })}/></label><label>Email (read only)<input disabled value={editCustomer.email || ""}/></label>{["phone", "address", "city", "country"].map(key => <label key={key}>{key[0].toUpperCase() + key.slice(1)}<input value={editCustomer[key] || ""} onChange={e => setEditCustomer({ ...editCustomer, [key]: e.target.value })}/></label>)}<div className="modal-actions"><button type="button" className="ghost-btn" onClick={() => setEditCustomer(null)}>Cancel</button><button className="gold-btn" type="submit"><Save size={15}/> Save changes</button></div></form></div>}
     {viewOrder && <div className="modal-backdrop" onMouseDown={e => { if (e.target === e.currentTarget) setViewOrder(null); }}><section className="edit-modal order-modal"><button type="button" className="close" onClick={() => setViewOrder(null)}><X/></button><p className="eyebrow">ORDER DETAILS · {viewOrder.orderNumber}</p><h2>{viewOrder.customer}</h2><p className="muted">{new Date(viewOrder.date).toLocaleString()}</p><div className="order-detail-grid"><div><small>Email</small><b>{viewOrder.email}</b></div><div><small>Phone</small><b>{viewOrder.phone || "Not provided"}</b></div><div><small>Delivery address</small><b>{viewOrder.address || "Not provided"}</b></div><div><small>Customer note</small><b>{viewOrder.customerNote || "—"}</b></div></div><h3 className="order-items-title">Items</h3><div className="order-items">{viewOrder.items.map((item, i) => <div key={i}><span>{item.name} × {item.quantity}</span><b>{formatPKR(item.lineTotal || item.price * item.quantity)}</b></div>)}</div><div className="order-total"><span>Order total</span><b>{formatPKR(viewOrder.total)}</b></div><label>Order status<select value={viewOrder.status} onChange={e => updateOrderStatus(viewOrder.id, e.target.value)}>{ORDER_STATUSES.map(st => <option key={st}>{st}</option>)}</select></label><div className="modal-actions"><button className="ghost-btn" onClick={() => setViewOrder(null)}>Close details</button></div></section></div>}
-    {productForm && <div className="modal-backdrop" onMouseDown={e => { if (e.target === e.currentTarget) { setProductForm(null); setEditingProduct(false); } }}><form className="edit-modal product-modal" onSubmit={saveProduct}><button type="button" className="close" onClick={() => { setProductForm(null); setEditingProduct(false); }}><X/></button><p className="eyebrow">CATALOGUE MANAGEMENT</p><h2>{editingProduct ? "Edit product" : "Add new product"}</h2><p className="muted">Saved products appear on the storefront catalogue.</p><label>Tray set name *<input required maxLength="140" value={productForm.name} onChange={e => setProductForm({ ...productForm, name: e.target.value })} placeholder="e.g. Walnut Serving Tray Set"/></label><label>Category *<input required maxLength="60" list="product-categories" value={productForm.category} onChange={e => setProductForm({ ...productForm, category: e.target.value })} placeholder="e.g. Serving Trays"/><datalist id="product-categories">{categories.map(c => <option key={c} value={c}/>)}</datalist></label><div className="form-two"><label>Price (PKR) *<input required type="number" min="0" step="0.01" value={productForm.price} onChange={e => setProductForm({ ...productForm, price: e.target.value })} placeholder="18500"/></label><label>Product tag<input maxLength="40" value={productForm.tag || ""} onChange={e => setProductForm({ ...productForm, tag: e.target.value })} placeholder="e.g. Best seller"/></label></div><label>Tray set image *<input type="file" accept="image/*" onChange={handleProductImage}/><small className="field-help">JPG, PNG or WebP · Max 8 MB before compression. Existing image is kept unless replaced.</small></label>{productForm.image && <div className="image-preview-row"><img src={productForm.image} alt="Product preview"/><span>Image preview · compressed before upload</span></div>}<label>Or image URL<input type="url" value={productForm.image?.startsWith("data:") ? "" : (productForm.image || "")} onChange={e => setProductForm({ ...productForm, image: e.target.value })} placeholder="https://…"/></label><label>Tray set description *<textarea required maxLength="2000" rows="3" value={productForm.description || ""} onChange={e => setProductForm({ ...productForm, description: e.target.value })} placeholder="Description shown on product details page…"/></label><label>Material / product details<input maxLength="500" value={productForm.material || ""} onChange={e => setProductForm({ ...productForm, material: e.target.value })} placeholder="e.g. Solid wood · Food-safe finish"/></label><label>Care instructions<textarea maxLength="1000" rows="3" value={productForm.care || ""} onChange={e => setProductForm({ ...productForm, care: e.target.value })} placeholder="Care instructions shown on product details page…"/></label><div className="modal-actions"><button type="button" className="ghost-btn" onClick={() => { setProductForm(null); setEditingProduct(false); }}>Cancel</button><button className="gold-btn" type="submit"><Save size={15}/> {editingProduct ? "Save changes" : "Add product"}</button></div></form></div>}
+    {productForm && <div className="modal-backdrop" onMouseDown={e => { if (e.target === e.currentTarget) { setProductForm(null); setEditingProduct(false); } }}><form className="edit-modal product-modal" onSubmit={saveProduct}><button type="button" className="close" onClick={() => { setProductForm(null); setEditingProduct(false); }}><X/></button><p className="eyebrow">CATALOGUE MANAGEMENT</p><h2>{editingProduct ? "Edit product" : "Add new product"}</h2><p className="muted">Saved products appear on the storefront catalogue.</p><label>Tray set name *<input required maxLength="140" value={productForm.name} onChange={e => setProductForm({ ...productForm, name: e.target.value })} placeholder="e.g. Walnut Serving Tray Set"/></label><label>Category *<input required maxLength="60" list="product-categories" value={productForm.category} onChange={e => setProductForm({ ...productForm, category: e.target.value })} placeholder="e.g. Serving Trays"/><datalist id="product-categories">{categories.map(c => <option key={c} value={c}/>)}</datalist></label><div className="form-two"><label>Price (PKR) *<input required type="number" min="0" step="0.01" value={productForm.price} onChange={e => setProductForm({ ...productForm, price: e.target.value })} placeholder="18500"/></label><label>Product tag<input maxLength="40" value={productForm.tag || ""} onChange={e => setProductForm({ ...productForm, tag: e.target.value })} placeholder="e.g. Best seller"/></label></div><label>Product gallery images *<input type="file" accept="image/*" multiple onChange={handleProductImages}/><small className="field-help">Choose up to 8 JPG, PNG or WebP images · Max 8 MB each before compression. First image is the main catalogue photo.</small></label>{(productForm.images?.length ? productForm.images : productForm.image ? [productForm.image] : []).length > 0 && <div className="image-preview-row">{(productForm.images?.length ? productForm.images : [productForm.image]).map((src,index)=><img key={index} src={src} alt={`Product preview ${index+1}`}/>) }<span>{productForm.images?.length || 1} gallery image(s) · compressed before upload</span></div>}<label>Or image URL<input type="url" value={productForm.image?.startsWith("data:") ? "" : (productForm.image || "")} onChange={e => setProductForm({ ...productForm, image: e.target.value })} placeholder="https://…"/></label><label>Tray set description *<textarea required maxLength="2000" rows="3" value={productForm.description || ""} onChange={e => setProductForm({ ...productForm, description: e.target.value })} placeholder="Description shown on product details page…"/></label><label>Material / product details<input maxLength="500" value={productForm.material || ""} onChange={e => setProductForm({ ...productForm, material: e.target.value })} placeholder="e.g. Solid wood · Food-safe finish"/></label><label>Care instructions<textarea maxLength="1000" rows="3" value={productForm.care || ""} onChange={e => setProductForm({ ...productForm, care: e.target.value })} placeholder="Care instructions shown on product details page…"/></label><div className="modal-actions"><button type="button" className="ghost-btn" onClick={() => { setProductForm(null); setEditingProduct(false); }}>Cancel</button><button className="gold-btn" type="submit"><Save size={15}/> {editingProduct ? "Save changes" : "Add product"}</button></div></form></div>}
   </main>;
 }
 
